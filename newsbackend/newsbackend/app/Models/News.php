@@ -19,7 +19,7 @@ class News extends Model
         'date' => 'date'
     ];
 
-    // Optional: Scope for ordering by date
+
     public function scopeLatest($query)
     {
         return $query->orderBy('date', 'desc');
