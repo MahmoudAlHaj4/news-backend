@@ -1,0 +1,10 @@
+config: 
+  target: 'https://news-backend.up.railway.app' 
+  phases: 
+    - duration: 10 
+      arrivalRate: 1 
+ 
+scenarios: 
+  - flow: 
+      - get: 
+          url: "/api/news" 

@@ -5,7 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\News;
 use Illuminate\Validation\ValidationException;
-
+use Illuminate\Support\Facades\Log; 
 class NewsController extends Controller
 {
     /**
@@ -42,37 +42,42 @@ class NewsController extends Controller
     /**
      * Show the form for creating a new resource.
      */
-    public function store()
-    {
-        
-    }
-
+   
     /**
      * Store a newly created resource in storage.
      */
-    public function createNews(Request $request)
-    {
-        try {
-            $request->validate([
-                'title' => 'required|string|max:255',
-                'link' => 'required|string|max:5000',
-            ]);
-            $news = News::create([
-                'title' => $request->input('title'),
-                'link' => $request->input('link'),
-                'author'=>$request->input('author'),
-                'date' => now(),
-            ]);
-             return response()->json([
-                'success' => true,
-                'message' => 'News created successfully',
-                'data' => $news
-            ], 201);
+public function store(Request $request)
+{
+    try {
+        $validatedData = $request->validate([
+            'title' => 'required|string|max:255',
+            'link' => 'required|url|max:2000',
+        ]);
+        
+        $news = News::create([
+            'title' => $validatedData['title'],
+            'link' => $validatedData['link'],
+            'date' => now(),
+        ]);
+        
+        return response()->json([
+            'success' => true,
+            'message' => 'News created successfully',
+            'data' => $news
+        ], 201);
 
-        }catch (\Exception $e) {
-            return response()->json(['error' => 'Failed to create news item: ' . $e->getMessage()], 500);
-        }
+    } catch (\Illuminate\Validation\ValidationException $e) {
+        return response()->json([
+            'success' => false,
+            'errors' => $e->errors()
+        ], 422);
+    } catch (\Exception $e) {
+        return response()->json([
+            'success' => false,
+            'error' => 'Failed to create news item: ' . $e->getMessage()
+        ], 500);
     }
+}
 
     /**
      * Display the specified resource.
@@ -90,27 +95,63 @@ class NewsController extends Controller
         }
     }
 
-    /**
-     * Show the form for editing the specified resource.
-     */
-    public function edit(string $id)
-    {
-        //
-    }
 
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, string $id)
-    {
-        //
-    }
+public function update(Request $request, string $id)
+{
+    try{
+        $news = News::findOrFail($id);
 
+        $validatedData = $request->validate([
+            'title' => 'sometimes|string|max:255',
+            'link' => 'sometimes|url|max:2000',  
+        ]);
+
+        if (empty($validatedData)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No valid data provided for update'
+            ], 400);
+        }
+
+        $news->update($validatedData);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'News item updated successfully',
+            'data' => $news->fresh()
+        ], 200);
+
+    } catch (\Illuminate\Validation\ValidationException $e) {
+        return response()->json([
+            'success' => false,
+            'errors' => $e->errors()
+        ], 422);
+    } catch (\Exception $e) {
+        return response()->json([
+            'success' => false,
+            'error' => 'Failed to edit news item: ' . $e->getMessage()
+        ], 500);
+    }
+}
     /**
      * Remove the specified resource from storage.
      */
     public function destroy(string $id)
     {
-        //
+      try{
+        $news = News::findOrFail($id);
+        $news->delete();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'News item deleted successfully'
+        ], 200);
+      } catch (\Exception $e) {
+        return response()->json(['error' => 'Failed to delete news item: ' . $e->getMessage()], 500);
+      }
+
     }
 }
