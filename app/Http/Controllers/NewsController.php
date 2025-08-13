@@ -166,7 +166,11 @@ public function getAllTitlesInTinker()
     public function show(string $id)
     {
         try {
+            Log::info('News show start: ' . microtime(true));
             $news = News::findOrFail($id);
+            Log::info('News show end: ' . microtime(true));
+
+  
             return response()->json([
                 'success' => true,
                 'data' => $news
