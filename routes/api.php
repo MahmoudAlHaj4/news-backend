@@ -10,6 +10,10 @@ use App\Http\Controllers\TrendingNewsController;
 use App\Http\Controllers\AboutSectionController;
 
 
+use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Response;
+
+
 
 
 Route::post('/news', [NewsController::class, 'store']);
@@ -46,9 +50,18 @@ Route::delete('/users/{id}', [AuthController::class, 'deleteUser']);
 
 });
 
-Route::get('/prospect-tool', function () {
-    return view('prospect-tool');
-});
+Route::get('storage/{path}', function ($path) {
+    $filePath = storage_path('app/public/' . $path);
+    
+    if (!File::exists($filePath)) {
+        abort(404);
+    }
+    
+    $file = File::get($filePath);
+    $type = File::mimeType($filePath);
+    
+    return Response::make($file, 200)->header("Content-Type", $type);
+})->where('path', '.*');
 
 
 
