@@ -11,21 +11,20 @@ class NewsController extends Controller
     /**
      * Display a listing of the resource.
      */
-public function index(Request $request)
+  public function index(Request $request)
 {
     try {
-        $perPage = min($request->input('per_page', 15), 100);
-        $categoryId = $request->input('category_id');
+        $perPage = $request->input('per_page', 15); 
+        $perPage = min($perPage, 100); 
+$newsQuery = News::query();
 
-       $query = News::select('id', 'title', 'created_at', 'main_image')->latest();
+if ($request->has('category_id') && !is_null($request->category_id)) {
+    $newsQuery->where('category_id', $request->category_id);
+}
 
+$news = $newsQuery->latest()->paginate($perPage);
 
-        if ($categoryId) {
-            $query->where('category_id', $categoryId);
-        }
-
-        $news = $query->paginate($perPage);
-
+        
         return response()->json([
             'success' => true,
             'data' => $news->items(),
@@ -46,7 +45,6 @@ public function index(Request $request)
         ], 500);
     }
 }
-
    public function getNewsTitles(Request $request)
 {
     try {
@@ -172,7 +170,7 @@ public function getAllTitlesInTinker()
                 'data' => $news
             ], 200);
         } catch (\Exception $e) {
-            return response()->json(['error' => 'News item not found ;D: ' . $e->getMessage()], 404);
+            return response()->json(['error' => 'News item not found: ' . $e->getMessage()], 404);
         }
     }
 
