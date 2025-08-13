@@ -18,6 +18,7 @@ Route::get('/news/{id}', [NewsController::class, 'show']);
 Route::patch('/news/{id}', [NewsController::class, 'update']);
 Route::delete('/news/{id}', [NewsController::class, 'destroy']);
 Route::get('/categories', [CategoryController::class, 'index']);
+Route::post('/categories', [CategoryController::class, 'store']);
 Route::get('/news-titles', [NewsController::class, 'getNewsTitles']);
 
 Route::get('/trending-news', [TrendingNewsController::class, 'index']);
@@ -48,6 +49,8 @@ Route::delete('/users/{id}', [AuthController::class, 'deleteUser']);
 Route::get('/prospect-tool', function () {
     return view('prospect-tool');
 });
+
+
 
 
 
