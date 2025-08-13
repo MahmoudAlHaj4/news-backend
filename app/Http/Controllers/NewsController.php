@@ -17,7 +17,7 @@ public function index(Request $request)
         $perPage = min($request->input('per_page', 15), 100);
         $categoryId = $request->input('category_id');
 
-       $query = News::select('id', 'title', 'created_at')->latest();
+       $query = News::select('id', 'title', 'created_at', 'main_image')->latest();
 
 
         if ($categoryId) {
@@ -172,7 +172,7 @@ public function getAllTitlesInTinker()
                 'data' => $news
             ], 200);
         } catch (\Exception $e) {
-            return response()->json(['error' => 'News item not found: ' . $e->getMessage()], 404);
+            return response()->json(['error' => 'News item not found ;D: ' . $e->getMessage()], 404);
         }
     }
 
