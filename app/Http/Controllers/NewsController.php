@@ -11,20 +11,21 @@ class NewsController extends Controller
     /**
      * Display a listing of the resource.
      */
-  public function index(Request $request)
+public function index(Request $request)
 {
     try {
-        $perPage = $request->input('per_page', 15); 
-        $perPage = min($perPage, 100); 
-           $categoryId = $request->input('category_id');
-$query = News::latest();
+        $perPage = min($request->input('per_page', 15), 100);
+        $categoryId = $request->input('category_id');
 
-if ($categoryId) {
-    $query->where('category_id', $categoryId);
-}
+        $query = News::select('title', 'created_at') // only the columns you need
+                     ->latest(); // orders by created_at
 
-$news = $query->paginate($perPage);
-        
+        if ($categoryId) {
+            $query->where('category_id', $categoryId);
+        }
+
+        $news = $query->paginate($perPage);
+
         return response()->json([
             'success' => true,
             'data' => $news->items(),
@@ -45,6 +46,7 @@ $news = $query->paginate($perPage);
         ], 500);
     }
 }
+
    public function getNewsTitles(Request $request)
 {
     try {
