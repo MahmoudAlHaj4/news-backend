@@ -23,7 +23,7 @@ if ($request->has('category_id') && !is_null($request->category_id)) {
 }
 
    $news = $newsQuery->latest()
-            ->select('id', 'title', 'main_image', 'category_id', 'priority', 'published_at', 'add_to_tinker')
+            ->select('id', 'title', 'main_image', 'category_id', 'priority', 'created_at', 'add_to_tinker')
             ->paginate($perPage);
 
         
