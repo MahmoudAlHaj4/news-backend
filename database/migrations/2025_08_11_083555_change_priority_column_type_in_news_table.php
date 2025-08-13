@@ -9,23 +9,20 @@ return new class extends Migration
     /**
      * Run the migrations.
      */
-   public function up()
-{
-    Schema::create('articles', function (Blueprint $table) {
-        $table->id();
-        $table->string('title');
-        $table->string('link');
-        $table->string('image');
-        $table->timestamps();
-    });
-}
-
+    public function up(): void
+    {
+        Schema::table('news', function (Blueprint $table) {
+            $table->string('priority')->default('عادي')->change();
+        });
+    }
 
     /**
      * Reverse the migrations.
      */
     public function down(): void
     {
-        Schema::dropIfExists('articles');
+        Schema::table('news', function (Blueprint $table) {
+            //
+        });
     }
 };

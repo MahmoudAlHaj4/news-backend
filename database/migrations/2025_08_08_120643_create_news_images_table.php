@@ -9,13 +9,12 @@ return new class extends Migration
     /**
      * Run the migrations.
      */
-    public function up()
+   public function up()
 {
-    Schema::create('trending_news', function (Blueprint $table) {
+    Schema::create('news_images', function (Blueprint $table) {
         $table->id();
-        $table->string('title');
-        $table->string('link');
-        $table->string('image');
+        $table->foreignId('news_id')->constrained('news')->onDelete('cascade');
+        $table->string('image_path');
         $table->timestamps();
     });
 }
@@ -26,6 +25,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('trending_news');
+        Schema::dropIfExists('news_images');
     }
 };

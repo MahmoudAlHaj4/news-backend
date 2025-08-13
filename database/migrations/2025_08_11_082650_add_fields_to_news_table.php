@@ -11,12 +11,9 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('news', function (Blueprint $table) {
-            $table->id();
-            $table->string('title');
-            $table->string('link');
-            $table->date('date');
-            $table->timestamps();
+        Schema::table('news', function (Blueprint $table) {
+             $table->boolean('add_to_tinker')->default(false);
+             $table->integer('priority')->default(0);
         });
     }
 
@@ -25,6 +22,8 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('news');
+        Schema::table('news', function (Blueprint $table) {
+            //
+        });
     }
 };

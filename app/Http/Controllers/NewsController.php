@@ -14,10 +14,16 @@ class NewsController extends Controller
   public function index(Request $request)
 {
     try {
-        $perPage = $request->input('per_page', 10); // Default 10 items per page
-        $perPage = min($perPage, 100); // Max 100 items per page
-        
-        $news = News::oldest()->paginate($perPage);
+        $perPage = $request->input('per_page', 15); 
+        $perPage = min($perPage, 100); 
+           $categoryId = $request->input('category_id');
+$query = News::latest();
+
+if ($categoryId) {
+    $query->where('category_id', $categoryId);
+}
+
+$news = $query->paginate($perPage);
         
         return response()->json([
             'success' => true,
@@ -39,49 +45,122 @@ class NewsController extends Controller
         ], 500);
     }
 }
-    /**
-     * Show the form for creating a new resource.
-     */
-   
-    /**
-     * Store a newly created resource in storage.
-     */
-public function store(Request $request)
+   public function getNewsTitles(Request $request)
 {
     try {
-        $validatedData = $request->validate([
-            'title' => 'required|string|max:255',
-            'link' => 'required|url|max:2000',
-        ]);
-        
-        $news = News::create([
-            'title' => $validatedData['title'],
-            'link' => $validatedData['link'],
-            'date' => now(),
-        ]);
-        
+        $news = News::select( 'title', )
+            ->get();
+
         return response()->json([
             'success' => true,
-            'message' => 'News created successfully',
             'data' => $news
-        ], 201);
-
-    } catch (\Illuminate\Validation\ValidationException $e) {
-        return response()->json([
-            'success' => false,
-            'errors' => $e->errors()
-        ], 422);
+        ], 200);
     } catch (\Exception $e) {
         return response()->json([
             'success' => false,
-            'error' => 'Failed to create news item: ' . $e->getMessage()
+            'error' => 'Failed to retrieve news titles: ' . $e->getMessage()
         ], 500);
     }
 }
 
-    /**
-     * Display the specified resource.
-     */
+public function store(Request $request)
+{
+    try {
+        Log::info('Store News Request:', $request->all());
+
+        $validatedData = $request->validate([
+            'title' => 'required|string|max:255',
+            'main_image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048', 
+            'content' => 'required|string',
+            'category_id' => 'nullable|integer|exists:categories,id',
+            'published_at' => 'nullable|date',
+            'add_to_tinker' => 'nullable|boolean',
+            'priority' => 'nullable|in:عاجل,عادي',
+        ]);
+        if (!empty($validatedData['priority']) && $validatedData['priority'] === 'عاجل') {
+            $count = News::where('priority', 'عاجل')->count();
+            if ($count >= 5) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'Maximum 5 عاجل news allowed'
+                ], 422);
+            }
+        }
+
+
+        if ($request->hasFile('main_image')) {
+            $path = $request->file('main_image')->store('news_images', 'public');
+            $validatedData['main_image'] = $path;
+        }
+
+        if (empty($validatedData['category_id'])) {
+            $defaultCategory = \App\Models\Category::where('key', 'mid')->first();
+            $validatedData['category_id'] = $defaultCategory ? $defaultCategory->id : null;
+        }
+
+        $news = \App\Models\News::create($validatedData);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'News created successfully',
+            'data' => $news,
+        ], 201);
+
+    } catch (\Illuminate\Validation\ValidationException $e) {
+        Log::warning('Validation Error:', $e->errors());
+        return response()->json([
+            'success' => false,
+            'errors' => $e->errors(),
+        ], 422);
+
+    } catch (\Exception $e) {
+        Log::error('News Store Error: ' . $e->getMessage(), ['exception' => $e]);
+        return response()->json([
+            'success' => false,
+            'error' => 'Failed to create news item: ' . $e->getMessage(),
+        ], 500);
+    }
+}
+
+
+public function uploadImage(Request $request)
+{
+    try {
+        $request->validate([
+            'image' => 'required|image|mimes:jpeg,png,jpg,gif|max:5120', // 5MB
+        ]);
+
+        $path = $request->file('image')->store('news_images', 'public');
+        $url = asset('storage/' . $path);
+
+        return response()->json([
+            'success' => true,
+            'url' => $url
+        ]);
+    } catch (\Illuminate\Validation\ValidationException $e) {
+        return response()->json([
+            'success' => false,
+            'error' => $e->errors()
+        ], 422);
+    } catch (\Exception $e) {
+        return response()->json([
+            'success' => false,
+            'error' => 'Failed to upload image: ' . $e->getMessage()
+        ], 500);
+    }
+}
+
+public function getAllTitlesInTinker()
+{
+    $titles = News::where('add_to_tinker', 1)
+        ->pluck('title')
+        ->toArray();
+
+    return response()->json([
+        'titles' => $titles,
+    ]);
+}
+
     public function show(string $id)
     {
         try {
@@ -103,17 +182,25 @@ public function update(Request $request, string $id)
 {
     try{
         $news = News::findOrFail($id);
-
+        
         $validatedData = $request->validate([
-            'title' => 'sometimes|string|max:255',
-            'link' => 'sometimes|url|max:2000',  
+            'title' => 'required|string|max:255',
+            'main_image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048', 
+            'content' => 'required|string',
+            'category_id' => 'nullable|integer|exists:categories,id',
+            'published_at' => 'nullable|date',
+            'add_to_tinker' => 'nullable|boolean',
+            'priority' => 'nullable|in:عاجل,عادي',
         ]);
 
-        if (empty($validatedData)) {
-            return response()->json([
-                'success' => false,
-                'message' => 'No valid data provided for update'
-            ], 400);
+        if ($request->hasFile('main_image')) {
+            $path = $request->file('main_image')->store('news_images', 'public');
+            $validatedData['main_image'] = $path;
+        }
+
+        if (empty($validatedData['category_id'])) {
+            $defaultCategory = \App\Models\Category::where('key', 'mid')->first();
+            $validatedData['category_id'] = $defaultCategory ? $defaultCategory->id : null;
         }
 
         $news->update($validatedData);
@@ -121,21 +208,22 @@ public function update(Request $request, string $id)
         return response()->json([
             'success' => true,
             'message' => 'News item updated successfully',
-            'data' => $news->fresh()
+            'data' => $news,
         ], 200);
 
-    } catch (\Illuminate\Validation\ValidationException $e) {
+    }catch (\Illuminate\Validation\ValidationException $e) {
         return response()->json([
             'success' => false,
-            'errors' => $e->errors()
+            'errors' => $e->errors(),
         ], 422);
     } catch (\Exception $e) {
         return response()->json([
             'success' => false,
-            'error' => 'Failed to edit news item: ' . $e->getMessage()
+            'error' => 'Failed to update news item: ' . $e->getMessage(),
         ], 500);
     }
 }
+
     /**
      * Remove the specified resource from storage.
      */
