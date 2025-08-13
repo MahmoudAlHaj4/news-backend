@@ -17,8 +17,8 @@ public function index(Request $request)
         $perPage = min($request->input('per_page', 15), 100);
         $categoryId = $request->input('category_id');
 
-        $query = News::select('title', 'created_at') // only the columns you need
-                     ->latest(); // orders by created_at
+       $query = News::select('id', 'title', 'created_at')->latest();
+
 
         if ($categoryId) {
             $query->where('category_id', $categoryId);
