@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\News;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Validation\ValidationException;
 use Illuminate\Support\Facades\Log; 
 class NewsController extends Controller
@@ -65,34 +66,96 @@ if ($request->has('category_id') && !is_null($request->category_id)) {
     }
 }
 
+// public function store(Request $request)
+// {
+//     try {
+//         Log::info('Store News Request:', $request->all());
+
+//         $validatedData = $request->validate([
+//             'title' => 'required|string|max:255',
+//             'main_image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048', 
+//             'content' => 'required|string',
+//             'category_id' => 'nullable|integer|exists:categories,id',
+//             'published_at' => 'nullable|date',
+//             'add_to_tinker' => 'nullable|boolean',
+//             'priority' => 'nullable|in:عاجل,عادي',
+//         ]);
+//         if (!empty($validatedData['priority']) && $validatedData['priority'] === 'عاجل') {
+//             $count = News::where('priority', 'عاجل')->count();
+//             if ($count >= 5) {
+//                 return response()->json([
+//                     'success' => false,
+//                     'error' => 'Maximum 5 عاجل news allowed'
+//                 ], 422);
+//             }
+//         }
+
+
+//         if ($request->hasFile('main_image')) {
+//             $path = $request->file('main_image')->store('news_images', 'public');
+//             $validatedData['main_image'] = $path;
+//         }
+
+//         if (empty($validatedData['category_id'])) {
+//             $defaultCategory = \App\Models\Category::where('key', 'mid')->first();
+//             $validatedData['category_id'] = $defaultCategory ? $defaultCategory->id : null;
+//         }
+
+//         $news = \App\Models\News::create($validatedData);
+
+//         return response()->json([
+//             'success' => true,
+//             'message' => 'News created successfully',
+//             'data' => $news,
+//         ], 201);
+
+//     } catch (\Illuminate\Validation\ValidationException $e) {
+//         Log::warning('Validation Error:', $e->errors());
+//         return response()->json([
+//             'success' => false,
+//             'errors' => $e->errors(),
+//         ], 422);
+
+//     } catch (\Exception $e) {
+//         Log::error('News Store Error: ' . $e->getMessage(), ['exception' => $e]);
+//         return response()->json([
+//             'success' => false,
+//             'error' => 'Failed to create news item: ' . $e->getMessage(),
+//         ], 500);
+//     }
+// }
+
+
+
 public function store(Request $request)
 {
     try {
-        Log::info('Store News Request:', $request->all());
-
         $validatedData = $request->validate([
             'title' => 'required|string|max:255',
-            'main_image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048', 
+            'main_image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:5120', 
             'content' => 'required|string',
             'category_id' => 'nullable|integer|exists:categories,id',
             'published_at' => 'nullable|date',
             'add_to_tinker' => 'nullable|boolean',
             'priority' => 'nullable|in:عاجل,عادي',
         ]);
-        if (!empty($validatedData['priority']) && $validatedData['priority'] === 'عاجل') {
-            $count = News::where('priority', 'عاجل')->count();
-            if ($count >= 5) {
+
+        // Upload to ImgBB if image exists
+        if ($request->hasFile('main_image')) {
+            $imageData = base64_encode(file_get_contents($request->file('main_image')->getRealPath()));
+            $response = Http::asForm()->post('https://api.imgbb.com/1/upload', [
+                'key' => env('IMGBB_API_KEY'),
+                'image' => $imageData
+            ]);
+
+            if ($response->successful()) {
+                $validatedData['main_image'] = $response->json()['data']['url'];
+            } else {
                 return response()->json([
                     'success' => false,
-                    'error' => 'Maximum 5 عاجل news allowed'
-                ], 422);
+                    'error' => 'Image upload failed'
+                ], 500);
             }
-        }
-
-
-        if ($request->hasFile('main_image')) {
-            $path = $request->file('main_image')->store('news_images', 'public');
-            $validatedData['main_image'] = $path;
         }
 
         if (empty($validatedData['category_id'])) {
@@ -109,14 +172,11 @@ public function store(Request $request)
         ], 201);
 
     } catch (\Illuminate\Validation\ValidationException $e) {
-        Log::warning('Validation Error:', $e->errors());
         return response()->json([
             'success' => false,
             'errors' => $e->errors(),
         ], 422);
-
     } catch (\Exception $e) {
-        Log::error('News Store Error: ' . $e->getMessage(), ['exception' => $e]);
         return response()->json([
             'success' => false,
             'error' => 'Failed to create news item: ' . $e->getMessage(),
@@ -125,20 +185,59 @@ public function store(Request $request)
 }
 
 
+
+// public function uploadImage(Request $request)
+// {
+//     try {
+//         $request->validate([
+//             'image' => 'required|image|mimes:jpeg,png,jpg,gif|max:5120', // 5MB
+//         ]);
+
+//         $path = $request->file('image')->store('news_images', 'public');
+//         $url = asset('storage/' . $path);
+
+//         return response()->json([
+//             'success' => true,
+//             'url' => $url
+//         ]);
+//     } catch (\Illuminate\Validation\ValidationException $e) {
+//         return response()->json([
+//             'success' => false,
+//             'error' => $e->errors()
+//         ], 422);
+//     } catch (\Exception $e) {
+//         return response()->json([
+//             'success' => false,
+//             'error' => 'Failed to upload image: ' . $e->getMessage()
+//         ], 500);
+//     }
+// }
+
 public function uploadImage(Request $request)
 {
     try {
         $request->validate([
-            'image' => 'required|image|mimes:jpeg,png,jpg,gif|max:5120', // 5MB
+            'image' => 'required|image|mimes:jpeg,png,jpg,gif|max:5120',
         ]);
 
-        $path = $request->file('image')->store('news_images', 'public');
-        $url = asset('storage/' . $path);
+        $imageData = base64_encode(file_get_contents($request->file('image')->getRealPath()));
+        $response = Http::asForm()->post('https://api.imgbb.com/1/upload', [
+            'key' => env('IMGBB_API_KEY'),
+            'image' => $imageData
+        ]);
+
+        if ($response->successful()) {
+            return response()->json([
+                'success' => true,
+                'url' => $response->json()['data']['url']
+            ]);
+        }
 
         return response()->json([
-            'success' => true,
-            'url' => $url
-        ]);
+            'success' => false,
+            'error' => 'Image upload failed'
+        ], 500);
+
     } catch (\Illuminate\Validation\ValidationException $e) {
         return response()->json([
             'success' => false,
@@ -166,9 +265,9 @@ public function getAllTitlesInTinker()
     public function show(string $id)
     {
         try {
-            Log::info('News show start: ' . microtime(true));
+            // Log::info('News show start: ' . microtime(true));
             $news = News::findOrFail($id);
-            Log::info('News show end: ' . microtime(true));
+        // 
 
   
             return response()->json([
