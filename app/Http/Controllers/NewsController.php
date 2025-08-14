@@ -125,14 +125,12 @@ if ($request->has('category_id') && !is_null($request->category_id)) {
 //     }
 // }
 
-
-
 public function store(Request $request)
 {
     try {
         $validatedData = $request->validate([
             'title' => 'required|string|max:255',
-            'main_image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:5120', 
+            'main_image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:5120',
             'content' => 'required|string',
             'category_id' => 'nullable|integer|exists:categories,id',
             'published_at' => 'nullable|date',
@@ -140,7 +138,18 @@ public function store(Request $request)
             'priority' => 'nullable|in:عاجل,عادي',
         ]);
 
-        // Upload to ImgBB if image exists
+        // ✅ Limit "عاجل" news to 5
+        if (!empty($validatedData['priority']) && $validatedData['priority'] === 'عاجل') {
+            $count = News::where('priority', 'عاجل')->count();
+            if ($count >= 5) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'Maximum 5 عاجل news allowed'
+                ], 422);
+            }
+        }
+
+        // ✅ Upload to ImgBB
         if ($request->hasFile('main_image')) {
             $imageData = base64_encode(file_get_contents($request->file('main_image')->getRealPath()));
             $response = Http::asForm()->post('https://api.imgbb.com/1/upload', [
@@ -149,26 +158,29 @@ public function store(Request $request)
             ]);
 
             if ($response->successful()) {
+                // Save the full ImgBB link
                 $validatedData['main_image'] = $response->json()['data']['url'];
             } else {
                 return response()->json([
                     'success' => false,
-                    'error' => 'Image upload failed'
+                    'error' => 'Image upload failed: ' . $response->body()
                 ], 500);
             }
         }
 
+        // ✅ Default category if not provided
         if (empty($validatedData['category_id'])) {
             $defaultCategory = \App\Models\Category::where('key', 'mid')->first();
             $validatedData['category_id'] = $defaultCategory ? $defaultCategory->id : null;
         }
 
+        // ✅ Save news
         $news = \App\Models\News::create($validatedData);
 
         return response()->json([
             'success' => true,
             'message' => 'News created successfully',
-            'data' => $news,
+            'data' => $news
         ], 201);
 
     } catch (\Illuminate\Validation\ValidationException $e) {
@@ -183,6 +195,7 @@ public function store(Request $request)
         ], 500);
     }
 }
+
 
 
 
