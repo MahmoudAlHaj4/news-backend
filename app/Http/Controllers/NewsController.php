@@ -266,13 +266,12 @@ public function uploadImage(Request $request)
 
 public function getAllTitlesInTinker()
 {
-    $news = News::where('add_to_tinker', 1)
-        ->select('id', 'title') 
-        ->get();
+    $titles = News::where('add_to_tinker', 1)
+        ->pluck('title')
+        ->toArray();
 
     return response()->json([
-        'success' => true,
-        'titles' => $news,
+        'titles' => $titles,
     ]);
 }
 
